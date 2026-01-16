@@ -199,6 +199,36 @@
 
 ### ☑️ 3단계 : 전체 고객 기준 최다 소비 업종 분석
 
+'''SELECT 
+    seq,
+    -- 1순위
+    MAX(CASE WHEN rn = 1 THEN category END) AS top1_category,
+    MAX(CASE WHEN rn = 1 THEN amount END)   AS top1_amount,
+    -- 2순위
+    MAX(CASE WHEN rn = 2 THEN category END) AS top2_category,
+    -- 3순위
+    MAX(CASE WHEN rn = 3 THEN category END) AS top3_category
+FROM (
+    SELECT 
+        seq,
+        category,
+        amount,
+        -- 금액 높은 순으로 랭킹 (금액 같으면 카테고리명 순)
+        ROW_NUMBER() OVER (PARTITION BY seq ORDER BY amount DESC, category ASC) AS rn
+    FROM (
+        /* 1. 일단 _AM으로 끝나는 모든 컬럼을 Unpivot 합니다 */
+        UNPIVOT (select * from wooricard_2024q4 where mbr_rk in (23, 24, 25) and tot_use_am >= 861)
+        ON COLUMNS('.*_AM')
+        INTO NAME category VALUE amount
+    ) unpvt_base
+    /* 2. 여기서 원하지 않는 합계/집계성 컬럼 3개를 제외합니다 */
+    WHERE category NOT IN ('TOT_USE_AM', 'CRDSL_USE_AM', 'CNF_USE_AM')
+) ranking_base
+WHERE rn <= 3 -- 3등까지만 남김
+GROUP BY seq;'''
+
+
+
 - 전체 고객의 업종별 소비 금액을 **Treemap**으로 시각화
 
 <br/>
